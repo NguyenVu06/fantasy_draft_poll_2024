@@ -4,9 +4,10 @@ import datetime
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-# File to store votes
+
 VOTES_FILE = "votes_with_time.csv"
-TIME_SPAN_HOURS = 3  # Each vote has a 3-hour span
+OPTIONS_FILE = "sidebar_options.csv"
+TIME_SPAN_HOURS = 3 
 
 def load_votes():
     try:
@@ -17,6 +18,20 @@ def load_votes():
 
 def save_votes(votes_df):
     votes_df.to_csv(VOTES_FILE, index=False)
+
+def load_options():
+    try:
+        options_df = pd.read_csv(OPTIONS_FILE)
+    except FileNotFoundError:
+        options_df = pd.DataFrame(columns=['Voted At', 'Player'])
+    return options_df
+
+def save_option(selected_option):
+    if selected_option != "None":  # Don't save if the selected option is "None"
+        options_df = load_options()
+        new_option = pd.DataFrame({'Voted At': [datetime.datetime.now()], 'Player': [selected_option]})
+        options_df = pd.concat([options_df, new_option], ignore_index=True)
+        options_df.to_csv(OPTIONS_FILE, index=False)
 
 def find_common_time_window(votes_df):
     time_windows = defaultdict(int)
@@ -58,7 +73,12 @@ def main():
     st.write("Select your preferred date and time for the our draft. The most common time window will be selected.")
     st.write("Note: Each vote has an automatic 3-hour span. for example if you vote for 9:00 AM, you are also voting for 10:00 AM and 11:00 AM.")
 
+    options = ["None","Nick (commish)", "Nguyen (2x champ)", "MyLinh", "Tuan", "David", "Andrew", "Joel", "Minh", "Dima", "Dan", "Anthony", "Nick's +1"]
+
+    selected_option = st.sidebar.radio("Choose an option:", options)
+    # Save the selected option
     
+
 
 
     # Load votes
@@ -69,21 +89,31 @@ def main():
     selected_time = st.time_input("Choose a time", value=datetime.time(9, 0))  # Default to 9:00 AM
 
     selected_datetime = datetime.datetime.combine(selected_date, selected_time)
+    if selected_date >= datetime.date(2024, 9, 5):
+        st.error("NO DUMMY, THIS IS KICK OFF DAY!, VOTE AGAIN")
 
-    if st.button("Vote"):
+    else:
+        if st.button("Vote"):
+            save_option(selected_option)
+            st.sidebar.write(f"{selected_option} Voting")
         # Check if the selected datetime is already in the votes
-        if selected_datetime in votes_df['start_time'].values:
-            # Increment the vote count for the selected datetime
-            votes_df.loc[votes_df['start_time'] == selected_datetime, 'votes'] += 1
-        else:
-            # Add the selected datetime with a vote count of 1
-            new_vote = pd.DataFrame({'start_time': [selected_datetime], 'votes': [1]})
-            votes_df = pd.concat([votes_df, new_vote], ignore_index=True)
+            if selected_datetime in votes_df['start_time'].values:
+                # Increment the vote count for the selected datetime
+                votes_df.loc[votes_df['start_time'] == selected_datetime, 'votes'] += 1
+            else:
+                # Add the selected datetime with a vote count of 1
+                new_vote = pd.DataFrame({'start_time': [selected_datetime], 'votes': [1]})
+                votes_df = pd.concat([votes_df, new_vote], ignore_index=True)
 
         # Save the updated votes
-        save_votes(votes_df)
+        if selected_option != "None":
+            save_votes(votes_df)
 
-        st.success(f"Your vote for {selected_datetime} has been recorded!")
+        # Display the saved options
+            st.sidebar.write("Recorded Options:")
+            options_df = load_options()
+            st.sidebar.write(options_df)
+            st.success(f"Click 'Vote' to record your selection at {selected_datetime}!")
 
     # Display the vote results
     st.write("Vote Results:")
@@ -103,6 +133,8 @@ def main():
     # Display the histogram
     st.write("Vote Frequency Histogram:")
     plot_histogram(votes_df)
+
+    
 
 if __name__ == "__main__":
     main()
