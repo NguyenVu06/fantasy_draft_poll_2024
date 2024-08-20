@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import altair as alt
 
 
 VOTES_FILE = "votes_with_time.csv"
@@ -73,7 +74,7 @@ def main():
     st.write("Select your preferred date and time for the our draft. The most common time window will be selected.")
     st.write("Note: Each vote has an automatic 3-hour span. for example if you vote for 9:00 AM, you are also voting for 10:00 AM and 11:00 AM.")
 
-    options = ["None","Nick (commish)", "Nguyen (2x champ)", "MyLinh", "Tuan", "David", "Andrew", "Joel", "Minh", "Dima", "Dan", "Anthony", "Nick's +1"]
+    options = ["None","Nick (commish)", "Nguyen (2x champ)", "MyLinh", "Tuan", "David", "Andrew", "Joel", "Minh", "Dima", "Dan", "Anthony", "Cliffton"]
 
     selected_option = st.sidebar.radio("Choose an option:", options)
     # Save the selected option
@@ -85,14 +86,43 @@ def main():
     votes_df = load_votes()
 
     # Calendar and time widget for selecting a date and time
-    selected_date = st.date_input("Choose a date", value=datetime.date.today())
-    selected_time = st.time_input("Choose a time", value=datetime.time(9, 0))  # Default to 9:00 AM
+    # selected_date = st.date_input("Choose a date", value=datetime.date.today())
+    # selected_time = st.time_input("Choose a time", value=datetime.time(9, 0))  # Default to 9:00 AM
 
-    selected_datetime = datetime.datetime.combine(selected_date, selected_time)
-    if selected_date >= datetime.date(2024, 9, 5):
-        st.error("NO DUMMY, THIS IS KICK OFF DAY!, VOTE AGAIN")
+    # selected_datetime = datetime.datetime.combine(selected_date, selected_time)
+    # if selected_date >= datetime.date(2024, 9, 5):
+    #     st.error("NO DUMMY, THIS IS KICK OFF DAY!, VOTE AGAIN")
 
+    # Define the valid date ranges
+    valid_date_ranges = [
+        (datetime.date(2024, 8, 22), datetime.date(2024, 8, 29)),
+        (datetime.date(2024, 9, 2), datetime.date(2024, 9, 4)),
+    ]
+
+    # Get today's date
+    today = datetime.date.today()
+
+    # Set the minimum and maximum dates for the date picker
+    min_date = min(valid_date_ranges[0][0], valid_date_ranges[1][0])
+    max_date = max(valid_date_ranges[0][1], valid_date_ranges[1][1])
+
+    # Date input with limited range
+    selected_date = st.date_input("Choose a date", value=min_date, min_value=min_date, max_value=max_date)
+
+    # Check if the selected date falls within any of the valid ranges
+    if not any(start <= selected_date <= end for start, end in valid_date_ranges):
+        st.error("Please select a date within the valid ranges (Aug 22-29 or Sep 1-5).")
     else:
+        selected_time = st.time_input("Choose a time", value=datetime.time(9, 0), step=3600)  # Default to 9:00 AM
+
+        # Validate to ensure only whole hours are selected
+        if selected_time.minute != 0 or selected_time.second != 0:
+            st.error("Please select a whole hour (e.g., 9:00 AM, 10:00 AM).")
+        else:
+            st.success(f"You have selected {selected_time.strftime('%I:%M %p')}")
+
+        selected_datetime = datetime.datetime.combine(selected_date, selected_time)
+
         if st.button("Vote"):
             save_option(selected_option)
             st.sidebar.write(f"{selected_option} Voting")
@@ -119,7 +149,39 @@ def main():
     st.write("Vote Results:")
     if not votes_df.empty:
         votes_df_sorted = votes_df.sort_values(by='start_time')
-        st.write(votes_df_sorted)
+        vote_counts = {}
+        for i, row in votes_df_sorted.iterrows():
+            vote_time = pd.to_datetime(row['start_time'])
+            next_hour = vote_time + pd.Timedelta(hours=1)
+            next_next_hour = vote_time + pd.Timedelta(hours=2)
+            if vote_time not in vote_counts:
+                vote_counts[vote_time] = 1
+            else:
+                vote_counts[vote_time] += 1
+            if next_hour not in vote_counts:
+                vote_counts[next_hour] = 1
+            else:
+                vote_counts[next_hour] += 1
+            if next_next_hour not in vote_counts:
+                vote_counts[next_next_hour] = 1
+            else:
+                vote_counts[next_next_hour] += 1
+        
+        vote_counts_df = pd.DataFrame(vote_counts.items(), columns=['Time', 'Votes'])
+        vote_counts_df = vote_counts_df.sort_values(by='Time')
+        st.write("Vote Frequency Histogram:")
+        chart = alt.Chart(vote_counts_df).mark_bar().encode(
+            # x=alt.X('Time:T', title='Time'),
+            x=alt.X('Time:T', title='Date and Time', axis=alt.Axis(format='%m-%d %H:%M', labelAngle=45)),
+            y=alt.Y('Votes:Q', title='Number of Votes')
+        ).properties(
+            width=600,
+            height=400
+        )
+
+        # Display the chart
+        st.altair_chart(chart)
+        st.write(vote_counts_df)
     else:
         st.write("No votes recorded yet.")
 
@@ -131,8 +193,11 @@ def main():
         st.write("No common time window determined yet.")
 
     # Display the histogram
-    st.write("Vote Frequency Histogram:")
-    plot_histogram(votes_df)
+    # st.write("Vote Frequency Histogram:")
+    # plot_histogram(votes_df)
+
+
+
 
     
 
