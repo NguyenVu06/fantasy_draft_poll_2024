@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import datetime
 import altair as alt
-from st_files_connection import FilesConnection
 import boto3
 import streamlit as st
 from io import StringIO
@@ -36,8 +35,6 @@ OPTIONS_FILE = S3_BUCKET_PATH + "sidebar_options.csv"
 RECORDED_VOTES = S3_BUCKET_PATH + "recorded_votes.csv"
 TIME_SPAN_HOURS = 3
 
-# Initialize S3 connection
-conn = st.connection('s3', type=FilesConnection)
 
 # I/O functions
 def load_votes():
