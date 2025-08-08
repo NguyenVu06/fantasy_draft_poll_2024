@@ -125,8 +125,15 @@ def main():
                 st.success("Your votes have been recorded!")
 
     # Display recorded options
-    st.sidebar.write("Recorded Options:")
-    st.sidebar.write(options_df)
+    st.sidebar.write("Players Voted:")
+    if options_df.empty:
+        st.sidebar.write("No votes recorded yet.")
+    else:
+        options_df_display = options_df[['Voted At', 'Player',]].copy()
+        options_df_display['Voted At'] = options_df_display['Voted At'].dt.strftime('%Y-%m-%d')
+        options_df_display = options_df_display.drop_duplicates(subset=['Voted At', 'Player'])
+        st.sidebar.dataframe(options_df_display, use_container_width=True)
+    # st.sidebar.write(options_df)
 
     # Display vote results
     st.write("### Vote Frequency by Time")
