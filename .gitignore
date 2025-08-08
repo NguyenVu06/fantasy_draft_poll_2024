@@ -1,0 +1,8 @@
+*secrets.toml   
+
+*.pyc
+*.pyo
+__pycache__/
+*.db
+*.sqlite3
+*.log
