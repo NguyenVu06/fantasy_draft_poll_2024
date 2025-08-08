@@ -64,8 +64,8 @@ def main():
     selected_start = datetime.datetime.combine(selected_date, selected_time)
 
     # Clamp end time range: 3-hour slot must stay within 9:00 to 21:00
-    if selected_time > datetime.time(18):
-        st.error("Start time must be between 09:00 and 18:00 to allow a 3-hour voting window.")
+    if selected_time > datetime.time(22):
+        st.error("Start time must be between 09:00 and 22:00 to allow a 3-hour voting window.")
         st.stop()
 
 
