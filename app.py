@@ -6,6 +6,7 @@ import altair as alt
 # Constants
 VOTES_FILE = "votes_with_time.csv"
 OPTIONS_FILE = "sidebar_options.csv"
+RECORDED_VOTES = "recorded_votes.csv"
 TIME_SPAN_HOURS = 3
 
 # I/O functions
@@ -18,23 +19,11 @@ def load_votes():
 
 def load_options():
     try:
-        df = pd.read_csv(OPTIONS_FILE, parse_dates=['Voted At'])
+        df = pd.read_csv(OPTIONS_FILE, parse_dates=['Voted At', 'start_time'])
     except FileNotFoundError:
-        df = pd.DataFrame(columns=['Voted At', 'Player'])
+        df = pd.DataFrame(columns=['Voted At', 'Player', 'start_time'])
     return df
 
-# Utility: tally expanded hours
-def tally_time_windows(votes_df):
-    if votes_df.empty:
-        return pd.DataFrame(columns=['Time', 'Votes'])
-    df = votes_df.copy()
-    df['hours'] = df['start_time'].apply(
-        lambda t: pd.date_range(t, periods=TIME_SPAN_HOURS, freq='H')
-    )
-    exploded = df.explode('hours')
-    grouped = exploded.groupby('hours')['votes'].sum().reset_index()
-    grouped.columns = ['Time', 'Votes']
-    return grouped
 
 # Main app
 def main():
@@ -51,9 +40,11 @@ def main():
         "Nick (commish)🏅", "Nguyen🏅", "MyLinh", "Tuan", "David🏅",
         "Andrew🏅", "Joel", "Minh🏅", "Dima", "Dan🏅", "Anthony", "Cliffton"
     ]
-    selected_players = st.sidebar.multiselect(
-        "Choose one or more players to vote for:", players
+
+    selected_players = st.sidebar.selectbox(
+        "Choose a player to vote for:", players
     )
+
 
     # Valid date range setup
     valid_ranges = [
@@ -67,7 +58,7 @@ def main():
     # Datetime input for start time
     # Split datetime picker: use date + time input separately
     selected_date = st.date_input("Select draft date:", min_value=min_date, max_value=max_date, value=min_date)
-    selected_time = st.time_input("Select start time (between 09:00 and 18:00):", value=datetime.time(9))
+    selected_time = st.time_input("Select start time (between 09:00 and 18:00):", value=datetime.time(9),step=datetime.timedelta(minutes=60))
 
     # Combine into datetime
     selected_start = datetime.datetime.combine(selected_date, selected_time)
@@ -76,8 +67,6 @@ def main():
     if selected_time > datetime.time(18):
         st.error("Start time must be between 09:00 and 18:00 to allow a 3-hour voting window.")
         st.stop()
-
-    selected_end = selected_start + datetime.timedelta(hours=TIME_SPAN_HOURS)
 
 
     selected_end = selected_start + datetime.timedelta(hours=TIME_SPAN_HOURS)
@@ -94,31 +83,42 @@ def main():
         if not selected_players:
             st.error("Please select at least one player.")
         else:
-            # Record options
-            now = datetime.datetime.now()
-            new_opts = pd.DataFrame([
-                {'Voted At': now, 'Player': p} for p in selected_players
-            ])
-            options_df = pd.concat([options_df, new_opts], ignore_index=True)
-            options_df.to_csv(OPTIONS_FILE, index=False)
+            
+            # Check if the start_time is already voted by the same players
+            existing_votes = options_df[
+                (options_df['start_time'] == selected_start) &
+                (options_df['Player'] == selected_players)
+            ]
+            if not existing_votes.empty:
+                st.warning("You have already voted for the selected players in this 3 hours time slot. Each player can only vote once per 3 hours time slot.")
+            else:
 
-            # Record votes per hour slot
-            hours = pd.date_range(
-                start=selected_start,
-                end=selected_end - datetime.timedelta(hours=1),
-                freq='H'
-            )
-            for slot in hours:
-                mask = votes_df['start_time'] == slot
-                if mask.any():
-                    votes_df.loc[mask, 'votes'] += len(selected_players)
-                else:
-                    votes_df = pd.concat(
-                        [votes_df, pd.DataFrame([{'start_time': slot, 'votes': len(selected_players)}])],
-                        ignore_index=True
-                    )
-            votes_df.to_csv(VOTES_FILE, index=False)
-            st.success("Your votes have been recorded!")
+                # Record votes per hour slot
+                hours = pd.date_range(
+                    start=selected_start,
+                    end=selected_end - datetime.timedelta(hours=1),
+                    freq='H'
+                )
+                for slot in hours:
+                    mask = votes_df['start_time'] == slot
+                    if mask.any():
+                        votes_df.loc[mask, 'votes'] += 1
+                    else:
+                        votes_df = pd.concat(
+                            [votes_df, pd.DataFrame([{'start_time': slot, 'votes': 1}])],
+                            ignore_index=True
+                        )
+                votes_df.to_csv(VOTES_FILE, index=False)
+
+                # Record options
+                now = datetime.datetime.now()
+                new_opts = pd.DataFrame([
+                    {'Voted At': now, 'Player': selected_players, 'start_time': selected_start} 
+                ])
+                options_df = pd.concat([options_df, new_opts], ignore_index=True)
+                options_df.to_csv(OPTIONS_FILE, index=False)
+
+                st.success("Your votes have been recorded!")
 
     # Display recorded options
     st.sidebar.write("Recorded Options:")
@@ -129,9 +129,9 @@ def main():
     if votes_df.empty:
         st.write("No votes recorded yet.")
     else:
-        tally_df = tally_time_windows(votes_df)
+        tally_df = votes_df.rename(columns={'start_time': 'Time', 'votes': 'Votes'})
         chart = alt.Chart(tally_df).mark_bar().encode(
-            x=alt.X('Time:T', title='Date & Time', axis=alt.Axis(format='%m-%d %H:%M', labelAngle=45)),
+            x=alt.X('Time:T', title='Date & Time', axis=alt.Axis(format='%d %b %H:%M', labelAngle=45)),
             y=alt.Y('Votes:Q', title='Number of Votes')
         ).properties(width=700, height=400)
         st.altair_chart(chart)
