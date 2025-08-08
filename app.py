@@ -111,7 +111,7 @@ def main():
 
     # Check if the selected date falls within any of the valid ranges
     if not any(start <= selected_date <= end for start, end in valid_date_ranges):
-        st.error("Please select a date within the valid ranges (Aug 22-29 or Sep 1-5).")
+        st.error("Please select a date within the valid ranges (Aug 22-29 or Sep 2-4).")
     else:
         selected_time = st.time_input("Choose a time", value=datetime.time(9, 0), step=3600)  # Default to 9:00 AM
 
