@@ -70,11 +70,15 @@ def main():
 
 
     selected_end = selected_start + datetime.timedelta(hours=TIME_SPAN_HOURS)
+    selected_end_pst = selected_end - datetime.timedelta(hours=3)  # Convert to PST
+    selected_start_pst = selected_start - datetime.timedelta(hours=3)
 
     # Show selected window with styled end time
     st.markdown(
-        f"**Selected Window:** {selected_start.strftime('%m/%d %H:%M')} — "
-        f"<span style='color:blue;font-weight:bold'>{selected_end.strftime('%H:%M')}</span>",
+        f"**Selected Window:** {selected_start.strftime('%d %b %H:%M')} — "
+        f"<span style='color:blue;font-weight:bold'>{selected_end.strftime('%H:%M')} EST</span>"
+        f"  **OR**  {selected_start_pst.strftime('%d %b %H:%M')} — "
+        f"<span style='color:blue;font-weight:bold'>{selected_end_pst.strftime('%H:%M')} PST</span>",
         unsafe_allow_html=True
     )
 
