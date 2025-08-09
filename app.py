@@ -78,7 +78,7 @@ def main():
 
     # Sidebar: player select
     players = [
-        "Nick (commish)🏅", "Nguyen🏅", "MyLinh", "Tuan", "David🏅",
+        "None", "Nick (commish)🏅", "Nguyen🏅", "MyLinh", "Tuan", "David🏅",
         "Andrew🏅", "Joel", "Minh🏅", "Dima", "Dan🏅", "Anthony", "Cliffton"
     ]
 
@@ -118,37 +118,41 @@ def main():
         if not selected_players:
             st.error("Please select a player.")
         else:
-            existing_votes = options_df[
-                (options_df['start_time'] == selected_start) &
-                (options_df['Player'] == selected_players)
-            ]
-            if not existing_votes.empty:
-                st.warning("You have already voted for this player at this time slot.")
+            if selected_players == "None":
+                st.error("You must select a player to vote for.")
+            
             else:
-                hours = pd.date_range(
-                    start=selected_start,
-                    end=selected_end - datetime.timedelta(hours=1),
-                    freq='H'
-                )
-                for slot in hours:
-                    mask = votes_df['start_time'] == slot
-                    if mask.any():
-                        votes_df.loc[mask, 'votes'] += 1
-                    else:
-                        votes_df = pd.concat(
-                            [votes_df, pd.DataFrame([{'start_time': slot, 'votes': 1}])],
-                            ignore_index=True
-                        )
-                save_votes(votes_df)
+                existing_votes = options_df[
+                    (options_df['start_time'] == selected_start) &
+                    (options_df['Player'] == selected_players)
+                ]
+                if not existing_votes.empty:
+                    st.warning("You have already voted for this player at this time slot.")
+                else:
+                    hours = pd.date_range(
+                        start=selected_start,
+                        end=selected_end - datetime.timedelta(hours=1),
+                        freq='H'
+                    )
+                    for slot in hours:
+                        mask = votes_df['start_time'] == slot
+                        if mask.any():
+                            votes_df.loc[mask, 'votes'] += 1
+                        else:
+                            votes_df = pd.concat(
+                                [votes_df, pd.DataFrame([{'start_time': slot, 'votes': 1}])],
+                                ignore_index=True
+                            )
+                    save_votes(votes_df)
 
-                now = datetime.datetime.now()
-                new_opts = pd.DataFrame([
-                    {'Voted At': now, 'Player': selected_players, 'start_time': selected_start}
-                ])
-                options_df = pd.concat([options_df, new_opts], ignore_index=True)
-                save_options(options_df)
+                    now = datetime.datetime.now()
+                    new_opts = pd.DataFrame([
+                        {'Voted At': now, 'Player': selected_players, 'start_time': selected_start}
+                    ])
+                    options_df = pd.concat([options_df, new_opts], ignore_index=True)
+                    save_options(options_df)
 
-                st.success("Your vote has been recorded!")
+                    st.success("Your vote has been recorded!")
 
     # Sidebar vote display
     st.sidebar.write("Players Voted:")
