@@ -170,20 +170,31 @@ def main():
         st.write("No votes recorded yet.")
     else:
         tally_df = votes_df.rename(columns={'start_time': 'Time', 'votes': 'Votes'})
+
+        max_votes = tally_df['Votes'].max(skipna=True)
+
+        # Filter to all tied top vote slots
+        top_windows = tally_df[tally_df['Votes'] == max_votes]
+
+        if top_windows.empty or pd.isna(max_votes):
+            st.write("No votes have been cast yet.")
+        else:
+            # choose the *latest* time slot among the ties
+            common_start = top_windows['Time'].max()
+            common_end = common_start + datetime.timedelta(hours=TIME_SPAN_HOURS)
+            st.write(f"The Latest & Most Common 3-hour window: {common_start} to {common_end}")
+
         tally_df['Votes'] = pd.to_numeric(tally_df['Votes'], errors='coerce').fillna(0).astype(int)
         tally_df['Time'] = pd.to_datetime(tally_df['Time'])
         chart = alt.Chart(tally_df).mark_bar().encode(
-            x=alt.X('Time:T', title='Date & Time', axis=alt.Axis(format='%d %b %H:%M', labelAngle=45)),
+            x=alt.X('Time:T', title='Date & Time', axis=alt.Axis(format='%d %b', labelAngle=45)),
             y=alt.Y('Votes:Q', title='Number of Votes')
         ).properties(width=700, height=400)
         st.altair_chart(chart)
         st.write(tally_df.sort_values('Time'))
 
-        idx = tally_df['Votes'].idxmax()
-        if pd.notna(idx):
-            common_start = tally_df.at[idx, 'Time']
-            common_end = common_start + datetime.timedelta(hours=TIME_SPAN_HOURS)
-            st.write(f"Most common 3-hour window: {common_start} to {common_end}")
+        
+
 
 if __name__ == "__main__":
     main()
