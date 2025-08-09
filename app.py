@@ -82,7 +82,7 @@ def main():
         "Andrew🏅", "Joel", "Minh🏅", "Dima", "Dan🏅", "Anthony", "Cliffton"
     ]
 
-    selected_players = st.sidebar.selectbox("Choose a player to vote for:", players)
+    selected_players = st.selectbox("Choose a player to vote for:", players)
 
     # Valid date range setup
     valid_ranges = [
